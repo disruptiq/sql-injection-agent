@@ -1,6 +1,6 @@
 # Sqlmap OpenAPI Agent
 
-This repository contains a Python script that reads an OpenAPI (Swagger) specification and automatically builds `sqlmap` commands to test each endpoint for SQL injection. It performs a *two-stage* process: a safer discovery scan by default, and optional conditional enumeration (listing databases, tables, dumping rows) when explicitly allowed.
+This repository contains a Python script (`sqlmap-agent/agent.py`) that reads an OpenAPI (Swagger) specification and automatically builds `sqlmap` commands to test each endpoint for SQL injection. It performs a *two-stage* process: a safer discovery scan by default, and optional conditional enumeration (listing databases, tables, dumping rows) when explicitly allowed.
 
 > **Important — legal & safety**: Only run this tool against systems you **own** or are **explicitly authorized** to test. The author assumes no liability for misuse. Use the `--confirm` flag only when you have written permission to enumerate and dump database contents.
 
@@ -8,7 +8,9 @@ This repository contains a Python script that reads an OpenAPI (Swagger) specifi
 
 ## Contents
 
-* `sqlmap_openapi_agent.py` — main script (single-file).
+* `sqlmap-agent/agent.py` — main script.
+* `sqlmap-agent/config.json` — configuration file for default settings.
+* `vulnerable-app/` — sample vulnerable application with OpenAPI spec and Docker setup.
 * `attack-logs-dynamic/` — default logs directory created by the script (after running).
 
 ---
@@ -30,18 +32,17 @@ This repository contains a Python script that reads an OpenAPI (Swagger) specifi
 
 1. **Python 3.8+**
 
-   ```bash
-   python --version
-   ```
+```bash
+python --version
+```
 
 2. **sqlmap**
 
-   * Either the `sqlmap.py` script path (e.g. `F:/.../sqlmap.py`) or a system executable (e.g. `sqlmap` on PATH).
-   * If you use the `.py` script, pass it via `--sqlmap`.
+* The script automatically clones and uses sqlmap from GitHub if not present. Alternatively, specify a custom path via `--sqlmap`.
 
 3. **OpenAPI file**
 
-   * A valid OpenAPI/Swagger YAML or JSON file. Default path in the script is `../vulnerable-app/openapi.yaml`.
+    * A valid OpenAPI/Swagger YAML or JSON file. Default path is configurable in `config.json` (initially `../vulnerable-app/openapi.yaml`).
 
 4. **(Optional) Authentication environment variables**
 
@@ -55,37 +56,51 @@ This repository contains a Python script that reads an OpenAPI (Swagger) specifi
 
 # Installation
 
-Clone or copy the script into a directory. No extra Python packages are required (it uses stdlib + `pyyaml`). If using YAML, ensure `pyyaml` is installed:
+Clone this repository:
+
+```bash
+git clone https://github.com/disruptiq/sql-injection-agent.git
+cd sql-injection-agent-from-openapi-spec
+```
+
+Install dependencies (pyyaml for YAML parsing):
 
 ```bash
 pip install pyyaml
 ```
 
+The script will automatically clone sqlmap if not present.
+
 ---
 
 # Quick start
 
-1. Open a terminal in the script folder.
+1. Navigate to the sqlmap-agent directory:
+
+```bash
+cd sqlmap-agent
+```
+
 2. Run a discovery scan (safe default):
 
 ```bash
-python sqlmap_openapi_agent.py
+python agent.py
 ```
 
-By default this will look for `../vulnerable-app/openapi.yaml`, call the sqlmap path defined in the script, and write logs to `attack-logs-dynamic/`.
+By default this will look for the OpenAPI file specified in `config.json` (initially `../vulnerable-app/openapi.yaml`), auto-clone sqlmap if needed, and write logs to the directory specified in `config.json` (initially `attack-logs-dynamic/`).
 
 ---
 
 # Usage & Modes
 
-Run `python sqlmap_openapi_agent.py --help` for full CLI help. Below are common modes and examples.
+Run `python agent.py --help` for full CLI help. Below are common modes and examples.
 
 ## 1) Discovery-only (default, safe)
 
 Scans each endpoint using non-heavy techniques (`--technique BU` by default) and writes logs. It *does not* list or dump DB contents.
 
 ```bash
-python sqlmap_openapi_agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/sqlmap.py --logs ./logs_discovery
+python agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/sqlmap.py --logs ./logs_discovery
 ```
 
 ## 2) Discovery + enumeration (DB listing / table dumping)
@@ -93,7 +108,7 @@ python sqlmap_openapi_agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/
 Add `--confirm` to permit listing databases/tables and dumping rows when an injection is detected.
 
 ```bash
-python sqlmap_openapi_agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/sqlmap.py --logs ./logs_full --confirm
+python agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/sqlmap.py --logs ./logs_full --confirm
 ```
 
 **Caution:** enumeration is destructive and may be slow. Use only with explicit permission.
@@ -103,7 +118,7 @@ python sqlmap_openapi_agent.py --openapi path/to/openapi.yaml --sqlmap /path/to/
 Override techniques string (sqlmap syntax) with `--technique` (e.g. `BU`, `U`, `T`).
 
 ```bash
-python sqlmap_openapi_agent.py --technique BU --confirm
+python agent.py --technique BU --confirm
 ```
 
 > Note: `T` (time-based) can be heavy and may cause server slowdowns or 500 errors.
@@ -113,7 +128,7 @@ python sqlmap_openapi_agent.py --technique BU --confirm
 Adjust sqlmap threads with `--threads` (default 5):
 
 ```bash
-python sqlmap_openapi_agent.py --threads 10
+python agent.py --threads 10
 ```
 
 ## 5) Flush sqlmap session between targets
@@ -121,7 +136,7 @@ python sqlmap_openapi_agent.py --threads 10
 Avoid reusing previous session state:
 
 ```bash
-python sqlmap_openapi_agent.py --flush-session
+python agent.py --flush-session
 ```
 
 ## 6) Limit dumping scope
@@ -129,7 +144,7 @@ python sqlmap_openapi_agent.py --flush-session
 Control enumeration scope to avoid huge data dumps:
 
 ```bash
-python sqlmap_openapi_agent.py --confirm --max-dbs 3 --max-tables 5 --max-rows 20
+python agent.py --confirm --max-dbs 3 --max-tables 5 --max-rows 20
 ```
 
 ## 7) Per-process timeout
@@ -137,7 +152,7 @@ python sqlmap_openapi_agent.py --confirm --max-dbs 3 --max-tables 5 --max-rows 2
 Kill sqlmap child processes after N seconds (default 300s):
 
 ```bash
-python sqlmap_openapi_agent.py --timeout 120
+python agent.py --timeout 120
 ```
 
 ## 8) Use system sqlmap binary
@@ -145,7 +160,7 @@ python sqlmap_openapi_agent.py --timeout 120
 If `sqlmap` is installed on PATH or you have a binary, point `--sqlmap` to it:
 
 ```bash
-python sqlmap_openapi_agent.py --sqlmap /usr/local/bin/sqlmap
+python agent.py --sqlmap /usr/local/bin/sqlmap
 ```
 
 ## 9) Narrow scan to one endpoint
@@ -178,7 +193,7 @@ To only see the built commands (without executing), either:
 * `--max-rows` — max rows per table when dumping (default 50).
 * `--timeout` — per-sqlmap subprocess timeout in seconds (default 300).
 
-Run `python sqlmap_openapi_agent.py --help` for complete details.
+Run `python agent.py --help` for complete details.
 
 ---
 
@@ -212,7 +227,7 @@ Ideas for future improvements:
 # Example full command (Windows)
 
 ```bash
-python sqlmap_openapi_agent.py --openapi ..\\vulnerable-app\\openapi.yaml --sqlmap F:\\disruptiq-notes\\sqlmap-dev\\sqlmap.py --logs .\\attack_logs_run --confirm --threads 8 --max-dbs 4 --timeout 600
+python agent.py --openapi ..\\vulnerable-app\\openapi.yaml --sqlmap ..\\sqlmap-dev\\sqlmap.py --logs .\\attack_logs_run --confirm --threads 8 --max-dbs 4 --timeout 600
 ```
 
 ---

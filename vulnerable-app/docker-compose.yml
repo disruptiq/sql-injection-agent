@@ -1,0 +1,11 @@
+
+version: "3.8"
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+    volumes:
+      - ./init_db.sql:/app/init_db.sql:ro
+    # no external network access required for demo

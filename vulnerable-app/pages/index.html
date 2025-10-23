@@ -1,0 +1,47 @@
+<h1>Welcome to the Vulnerable E-commerce App!</h1>
+
+<h2>Products</h2>
+<div id="products"></div>
+
+<h2>Search Products</h2>
+<input type="text" id="search-box" placeholder="Enter product name">
+<button id="search-button">Search</button>
+<div id="search-results"></div>
+
+<script>
+  // Fetch and display products
+  fetch("/products")
+    .then(response => response.json())
+    .then(products => {
+      const productsDiv = document.getElementById("products");
+      products.forEach(product => {
+        const productDiv = document.createElement("div");
+        productDiv.innerHTML = `
+          <h3>${product.name}</h3>
+          <p>${product.description}</p>
+          <p>Price: $${product.price}</p>
+        `;
+        productsDiv.appendChild(productDiv);
+      });
+    });
+
+  // Search for products
+  document.getElementById("search-button").addEventListener("click", () => {
+    const searchTerm = document.getElementById("search-box").value;
+    fetch(`/products/search?name=${searchTerm}`)
+      .then(response => response.json())
+      .then(products => {
+        const searchResultsDiv = document.getElementById("search-results");
+        searchResultsDiv.innerHTML = "";
+        products.forEach(product => {
+          const productDiv = document.createElement("div");
+          productDiv.innerHTML = `
+            <h3>${product.name}</h3>
+            <p>${product.description}</p>
+            <p>Price: $${product.price}</p>
+          `;
+          searchResultsDiv.appendChild(productDiv);
+        });
+      });
+  });
+</script>

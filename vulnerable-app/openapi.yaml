@@ -1,0 +1,315 @@
+openapi: 3.1.0
+info:
+  title: Vulnerable Application API
+  description: The API for the vulnerable application, demonstrating various security vulnerabilities.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+paths:
+  /login:
+    post:
+      summary: User Login
+      description: Weak authentication endpoint.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: The user's name.
+                password:
+                  type: string
+                  description: The user's password.
+      responses:
+        '200':
+          description: Login successful.
+        '401':
+          description: Invalid username or password.
+  /user:
+    get:
+      summary: Get User by ID
+      description: SQLi vulnerable endpoint to get user by ID.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User found.
+        '404':
+          description: User not found.
+        '500':
+          description: Database error.
+  /api/user/{user_id}:
+    get:
+      summary: Get User by ID (API)
+      description: IDOR vulnerable endpoint to get user by ID.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User found.
+        '404':
+          description: User not found.
+  /search:
+    post:
+      summary: Search Users
+      description: SQLi vulnerable endpoint to search for users.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                q:
+                  type: string
+                  description: The search query.
+      responses:
+        '200':
+          description: Search results.
+  /api/users:
+    post:
+      summary: Get User by Email (API)
+      description: SQLi vulnerable endpoint to get user by email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: The user's email.
+      responses:
+        '200':
+          description: User found.
+        '404':
+          description: User not found.
+  /tools/dns-lookup:
+    get:
+      summary: DNS Lookup
+      description: Command injection vulnerable endpoint.
+      parameters:
+        - name: host
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DNS lookup results.
+  /xxe:
+    post:
+      summary: XXE Injection
+      description: XXE injection vulnerable endpoint.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: XML processing result.
+        '500':
+          description: Error processing XML.
+  /hello:
+    get:
+      summary: Hello
+      description: XSS vulnerable endpoint.
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A greeting message.
+  /pickle:
+    post:
+      summary: Insecure Deserialization
+      description: Insecure deserialization vulnerable endpoint.
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              format: base64
+      responses:
+        '200':
+          description: Deserialization result.
+        '500':
+          description: Error deserializing data.
+  /proxy:
+    get:
+      summary: Proxy
+      description: SSRF vulnerable endpoint.
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The content of the proxied URL.
+  /page:
+    get:
+      summary: Page
+      description: LFI vulnerable endpoint.
+      parameters:
+        - name: p
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The content of the requested page.
+        '404':
+          description: Page not found.
+  /files:
+    get:
+      summary: Files
+      description: Path traversal vulnerable endpoint.
+      parameters:
+        - name: filename
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The content of the requested file.
+        '404':
+          description: File not found.
+  /products:
+    get:
+      summary: Get all products
+      description: Retrieves a list of all products.
+      responses:
+        '200':
+          description: A list of products.
+        '500':
+          description: Database error.
+  /products/search:
+    get:
+      summary: Search for a product
+      description: SQLi vulnerable endpoint to search for products by name.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of matching products.
+        '500':
+          description: Database error.
+  /products/{product_id}:
+    get:
+      summary: Get a specific product
+      description: SQLi vulnerable endpoint to retrieve a product by its ID.
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The requested product.
+        '404':
+          description: Product not found.
+        '500':
+          description: Database error.
+  /orders:
+    post:
+      summary: Create an order
+      description: SQLi vulnerable endpoint to create a new order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Order created successfully.
+        '500':
+          description: Database error.
+  /orders/{user_id}:
+    get:
+      summary: Get orders for a user
+      description: SQLi vulnerable endpoint to retrieve orders for a specific user.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of orders for the user.
+        '500':
+          description: Database error.
+  /reviews:
+    post:
+      summary: Add a review for a product
+      description: SQLi vulnerable endpoint to add a review for a product.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_id:
+                  type: integer
+                user_id:
+                  type: integer
+                review:
+                  type: string
+                rating:
+                  type: integer
+      responses:
+        '200':
+          description: Review added successfully.
+        '500':
+          description: Database error.
+  /reviews/{product_id}:
+    get:
+      summary: Get reviews for a product
+      description: SQLi vulnerable endpoint to retrieve reviews for a specific product.
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of reviews for the product.
+        '500':
+          description: Database error.

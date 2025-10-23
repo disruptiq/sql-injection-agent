@@ -1,0 +1,14 @@
+{
+  "DEFAULT_OPENAPI_FILE": "../vulnerable-app/openapi.yaml",
+  "DEFAULT_LOGS_DIR": "attack-logs-dynamic",
+  "DEFAULT_SQLMAP_PATH": "./sqlmap-dev/sqlmap.py",
+  "DEFAULT_SQLMAP_EXTRA": ["--batch", "--level=5", "--risk=3"],
+  "DEFAULT_TEST_VALUE": {
+    "string": "test",
+    "integer": "1",
+    "number": "1",
+    "boolean": "true",
+    "object": {},
+    "array": ["test"]
+  }
+}

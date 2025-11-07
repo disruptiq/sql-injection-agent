@@ -173,14 +173,43 @@ python agent.py --ports 5000 8000 3000
 
 This creates separate log directories like `attack-logs-dynamic_port_5000/`, `attack-logs-dynamic_port_8000/`, etc.
 
-## 11) Narrow scan to one endpoint
+## 10) Filter endpoints with regex patterns
+
+Scan only specific endpoints or exclude certain paths:
+
+```bash
+# Scan only user-related endpoints
+python agent.py --include-pattern "/api/users.*"
+
+# Exclude health check endpoints
+python agent.py --exclude-pattern "/health.*"
+
+# Combine with other options
+python agent.py --include-pattern "POST /api/users" --exclude-pattern "/admin.*"
+```
+
+## 11) Scan endpoints concurrently
+
+Speed up scanning by processing multiple endpoints simultaneously:
+
+```bash
+# Scan 5 endpoints at once
+python agent.py --concurrency 5
+
+# Combine concurrency with other options
+python agent.py --concurrency 3 --ports 5000 8000 --include-pattern "/api/.*"
+```
+
+**Note:** Higher concurrency may overwhelm target servers. Start with low values (2-5) and monitor performance.
+
+## 13) Narrow scan to one endpoint
 
 The script scans all paths in the OpenAPI file. To scan a single endpoint:
 
 * Create a small OpenAPI file with only the path you want and pass `--openapi small.yaml`, or
 * Manually run the printed sqlmap command (the script prints executed commands).
 
-## 12) Dry-run / debug
+## 14) Dry-run / debug
 
 To only see the built commands (without executing), either:
 
@@ -203,6 +232,9 @@ To only see the built commands (without executing), either:
 * `--max-rows` — max rows per table when dumping (default 50).
 * `--timeout` — per-sqlmap subprocess timeout in seconds (default 300).
 * `--ports` — list of ports to scan simultaneously (e.g., `--ports 5000 8000 3000`).
+* `--include-pattern` — regex pattern to include only matching endpoints (e.g., `/api/users.*`).
+* `--exclude-pattern` — regex pattern to exclude matching endpoints (e.g., `/health.*`).
+* `--concurrency` — number of endpoints to scan concurrently (default: 1).
 
 Run `python agent.py --help` for complete details.
 
@@ -210,17 +242,30 @@ Run `python agent.py --help` for complete details.
 
 # Output & Logs
 
-* Each endpoint produces a safe filename under `--logs` (e.g. `logs/endpoint_name.log`) and a `*_summary.txt` file with the first portion of sqlmap output.
-* When enumeration runs, sqlmap's `--output-dir` is set to a subfolder so sqlmap artifacts (dumps, sessions) are stored in a dedicated location per endpoint.
+* **Aggregated Results**: A comprehensive `output.json` file is created in the workspace root directory (one level above the sqlmap-agent folder), containing only vulnerable endpoints with detailed analysis for researchers. This file is updated live as endpoints are scanned. For multi-port scans, separate files like `output_port_5000.json` are created.
+* **Per-Endpoint Logs**: Each endpoint produces a safe filename under `--logs` (e.g. `logs/endpoint_name.log`) and a `*_summary.txt` file with the first portion of sqlmap output.
+* **SQLMap Artifacts**: When enumeration runs, sqlmap's `--output-dir` is set to a subfolder so sqlmap artifacts (dumps, sessions) are stored in a dedicated location per endpoint.
+
+## Output.json Structure
+
+The `output.json` file contains:
+
+* **Scan Metadata**: Start/end times, server URL, scan settings, endpoint counts
+* **Endpoint Results**: For each endpoint scanned:
+  - Basic info (method, path, vulnerability status)
+  - Injection details (technique, parameter, payload type, database type)
+  - Enumeration results (databases, tables found)
+  - Evidence list (what was detected)
+  - Evaluation (severity, impact, recommendations, research notes)
 
 ---
 
 # Troubleshooting
 
 * `sqlmap executable not found` — ensure `--sqlmap` points to a valid file or `sqlmap` is on PATH.
-* Permission errors writing logs — ensure the user can write to the specified `--logs` directory.
+* Permission errors writing logs — enure the user can write to the specified `--logs` directory.
 * No injection found but expected — try increasing `--level`/`--risk` or add `T` (time) to `--technique` (careful).
-* Server returns 500 during test — lower `--risk`/`--level`, avoid `T` (timing), or run against a staging instance.
+* Server returns 500 during test — lowser `--risk`/`--level`, avoid `T` (timing), or run against a staging instance.
 
 ---
 

@@ -3,18 +3,15 @@ SQLMap command construction and execution
 """
 
 import logging
+import os
 import subprocess
 import time
 import sys
 import re
 from pathlib import Path
 
-from .config import DEFAULT_SQLMAP_EXTRA
 from .utils import shell_join, detected_injection_in_output, extract_db_names
-from .openapi import (
-    collect_parameters, substitute_path_params, security_headers_and_params,
-    build_param_value, construct_json_string_from_schema
-)
+from .openapi import collect_parameters, substitute_path_params, build_param_value, construct_json_string_from_schema
 
 
 def ensure_sqlmap(sqlmap_dir='sqlmap-dev'):
@@ -37,8 +34,8 @@ def build_base_sqlmap_cmd(sqlmap_path, url, output_dir, extra_flags=None):
     return cmd
 
 
-def run_sqlmap(cmd_list, master_log_file, log_full_output, capture_output=True, timeout=None):
-    """Run sqlmap command. Return (returncode, stdout+stderr text)."""
+def run_sqlmap(cmd_list, master_log_file, log_full_output, capture_output=True, timeout=None, use_json=False):
+    """Run sqlmap command. Return (returncode, stdout+stderr text, json_data)."""
     logging.info(f'Executing command: {shell_join(cmd_list)}')
     try:
         proc = subprocess.Popen(
@@ -61,7 +58,7 @@ def run_sqlmap(cmd_list, master_log_file, log_full_output, capture_output=True, 
                     break
                 out_lines.append(line)
                 # Filter out ASCII art and non-critical warnings
-                if not re.match(r'^\s*(\[\*\]|___|\|)|\\s*$', line) and 'testing connection' not in line and 'using\\' + chr(92) + ' as the output directory' not in line:
+                if not re.match(r'^\s*(\[\*\]|___|\|)|\\s*$', line) and 'testing connection' not in line and 'using' + chr(92) + ' as the output directory' not in line:
                     logging.info(line.rstrip())
                 # check timeout between lines
                 if timeout and (time.time() - start) > timeout:
@@ -102,12 +99,12 @@ def run_sqlmap(cmd_list, master_log_file, log_full_output, capture_output=True, 
             except Exception as e:
                 logging.warning(f'Could not write to master log file: {e}')
 
-        return rc, full
+        return rc, full, None
 
     except FileNotFoundError as e:
-        return 255, f'[ERROR] sqlmap executable not found: {e}'
+        return 255, f'[ERROR] sqlmap executable not found: {e}', None
     except Exception as e:
-        return 254, f'[ERROR] Exception running sqlmap: {e}'
+        return 254, f'[ERROR] Exception running sqlmap: {e}', None
 
 
 def construct_sqlmap_command(server_url, raw_path, method, path_item, operation, spec, base_dir, sqlmap_path, output_dir, extra_flags):
@@ -126,6 +123,7 @@ def construct_sqlmap_command(server_url, raw_path, method, path_item, operation,
     cmd = build_base_sqlmap_cmd(sqlmap_path, url, output_dir, extra_flags)
 
     # security headers / query params
+    from .openapi import security_headers_and_params
     sec_headers, sec_queries = security_headers_and_params(operation, spec)
     for hn, hv in sec_headers.items():
         cmd.extend(['-H', f'{hn}: {hv}'])
@@ -185,15 +183,15 @@ def construct_sqlmap_command(server_url, raw_path, method, path_item, operation,
     return cmd
 
 
-def execute_and_capture(cmd_list, logs_dir, summary, log_full_output):
+def execute_and_capture(cmd_list, logs_dir, summary, log_full_output, use_json=False):
     """Execute command and capture output"""
     from .utils import ensure_dir, safe_summary_to_filename
 
     ensure_dir(logs_dir)
     safe_name = safe_summary_to_filename(summary)
     log_file = os.path.join(logs_dir, f'{safe_name}.log')
-    rc, out = run_sqlmap(cmd_list, master_log_file=None, log_full_output=log_full_output)
-    return rc, out, log_file
+    rc, out, json_data = run_sqlmap(cmd_list, master_log_file=None, log_full_output=log_full_output, use_json=use_json)
+    return rc, out, log_file, json_data
 
 
 def enumerate_if_vulnerable(base_cmd, url, logs_dir, summary, sqlmap_path, confirm, max_tables, max_rows, master_log_file, log_full_output):
@@ -209,11 +207,14 @@ def enumerate_if_vulnerable(base_cmd, url, logs_dir, summary, sqlmap_path, confi
     if not any(arg.startswith('--risk') for arg in discovery):
         discovery.extend(['--risk', '1'])
 
-    rc, out, logfile = execute_and_capture(discovery, logs_dir, summary + '_discovery', log_full_output)
+    rc, out, logfile, _ = execute_and_capture(discovery, logs_dir, summary + '_discovery', log_full_output, use_json=False)
 
-    if not detected_injection_in_output(out):
+    # Check for injection using text parsing (JSON disabled for now)
+    injection_detected = detected_injection_in_output(out)
+
+    if not injection_detected:
         logging.info(f'No clear injection detected during discovery for {url}')
-        return False, out
+        return False, out, {}
 
     logging.warning(f'Potential injection detected. Output saved to {logfile}')
     with open(os.path.join(logs_dir, f'{summary}_vulnerable.log'), 'w', encoding='utf-8') as f:
@@ -225,7 +226,7 @@ def enumerate_if_vulnerable(base_cmd, url, logs_dir, summary, sqlmap_path, confi
 
     # get DB list
     dbs_cmd = list(base_cmd) + ['--dbs']
-    rc, out_dbs, dbs_log = execute_and_capture(dbs_cmd, logs_dir, summary + '_dbs', log_full_output)
+    rc, out_dbs, dbs_log, _ = execute_and_capture(dbs_cmd, logs_dir, summary + '_dbs', log_full_output)
     dbs = extract_db_names(out_dbs)
     if not dbs:
         logging.warning(f'Could not parse DB names, but sqlmap output saved to {dbs_log}')
@@ -236,7 +237,7 @@ def enumerate_if_vulnerable(base_cmd, url, logs_dir, summary, sqlmap_path, confi
     all_found = {}
     for db in dbs[:max_tables]:
         tables_cmd = list(base_cmd) + ['-D', db, '--tables']
-        rc, out_tables, tables_log = execute_and_capture(tables_cmd, logs_dir, f'{summary}_tables_{db}', log_full_output)
+        rc, out_tables, tables_log, _ = execute_and_capture(tables_cmd, logs_dir, f'{summary}_tables_{db}', log_full_output)
         # crude parse for table names
         tables = re.findall(r'Table: (.+)\n', out_tables)
         if not tables:
@@ -249,7 +250,7 @@ def enumerate_if_vulnerable(base_cmd, url, logs_dir, summary, sqlmap_path, confi
         # dump each table (limited by max_rows)
         for tbl in tables[:max_tables]:
             dump_cmd = list(base_cmd) + ['-D', db, '-T', tbl, '--dump', '--limit', str(max_rows)]
-            rc, out_dump, dump_log = execute_and_capture(dump_cmd, logs_dir, f'{summary}_dump_{db}_{tbl}', log_full_output)
+            rc, out_dump, dump_log, _ = execute_and_capture(dump_cmd, logs_dir, f'{summary}_dump_{db}_{tbl}', log_full_output)
             logging.info(f'Dump for {db}.{tbl} saved to {dump_log}')
 
-    return True, out
+    return True, out, all_found

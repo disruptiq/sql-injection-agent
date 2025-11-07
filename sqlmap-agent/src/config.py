@@ -53,6 +53,9 @@ def setup_cli_parser():
     ap.add_argument('--log-level', default='INFO', help='Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)')
     ap.add_argument('--server-url', default=None, help='The server URL to test against.')
     ap.add_argument('--ports', nargs='*', type=int, help='List of ports to scan (e.g., --ports 5000 8000 3000)')
+    ap.add_argument('--include-pattern', help='Regex pattern to include only matching endpoints (e.g., "/api/users.*")')
+    ap.add_argument('--exclude-pattern', help='Regex pattern to exclude matching endpoints (e.g., "/health.*")')
+    ap.add_argument('--concurrency', type=int, default=1, help='Number of endpoints to scan concurrently (default: 1)')
     ap.add_argument('--log-full-output', action='store_true', help='Enable logging of the full sqlmap output for all endpoints.')
 
     return ap

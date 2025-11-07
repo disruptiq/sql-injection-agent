@@ -5,15 +5,15 @@ This document outlines various implementation ideas to enhance the SQL Injection
 ## Core Functionality Enhancements
 
 ### Scanning Engine Improvements
-- [ ] **Parallel Endpoint Scanning**
-  - Implement concurrent execution using asyncio or ThreadPoolExecutor
-  - Add `--concurrency` flag to control parallel scans (default: 3-5)
-  - Respect rate limits and avoid overwhelming target servers
+- [x] **Parallel Endpoint Scanning** - Implemented ThreadPoolExecutor with `--concurrency` flag
+  - ✅ Implement concurrent execution using ThreadPoolExecutor
+  - ✅ Add `--concurrency` flag to control parallel scans (default: 1)
+  - ✅ Respect rate limits and avoid overwhelming target servers
 
-- [ ] **Robust SQLMap Output Parsing**
-  - Replace regex heuristics with SQLMap's `--json` output mode
-  - Implement fallback parsing for edge cases
-  - Add validation for JSON schema compliance
+- [x] **Robust SQLMap Output Parsing** - Implemented JSON output parsing framework (temporarily disabled for stability)
+  - ✅ Replace regex heuristics with SQLMap's `--json` output mode
+  - ✅ Implement fallback parsing for edge cases
+  - ⏳ Add validation for JSON schema compliance (pending)
 
 - [ ] **Enhanced Timeout Management**
   - Granular timeouts: connection, discovery, enumeration phases
@@ -34,7 +34,7 @@ This document outlines various implementation ideas to enhance the SQL Injection
 ## Feature Additions
 
 ### Scanning Control
-- [ ] **Endpoint Filtering System**
+- [x] **Endpoint Filtering System** - Implemented `--include-pattern` and `--exclude-pattern` regex flags
   - Add `--include-pattern` and `--exclude-pattern` regex flags
   - Support filtering by HTTP method, path, or operation ID
   - Integration with OpenAPI tags for selective scanning

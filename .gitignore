@@ -1,3 +1,6 @@
 archive
-attack-logs-dynamic
+attack-logs*
 sqlmap-dev
+test_multi*
+output*
+__pycache__

@@ -163,14 +163,24 @@ If `sqlmap` is installed on PATH or you have a binary, point `--sqlmap` to it:
 python agent.py --sqlmap /usr/local/bin/sqlmap
 ```
 
-## 9) Narrow scan to one endpoint
+## 9) Scan multiple ports simultaneously
+
+Scan the same API endpoints on multiple ports at once. Each port gets its own log directory:
+
+```bash
+python agent.py --ports 5000 8000 3000
+```
+
+This creates separate log directories like `attack-logs-dynamic_port_5000/`, `attack-logs-dynamic_port_8000/`, etc.
+
+## 11) Narrow scan to one endpoint
 
 The script scans all paths in the OpenAPI file. To scan a single endpoint:
 
 * Create a small OpenAPI file with only the path you want and pass `--openapi small.yaml`, or
 * Manually run the printed sqlmap command (the script prints executed commands).
 
-## 10) Dry-run / debug
+## 12) Dry-run / debug
 
 To only see the built commands (without executing), either:
 
@@ -192,6 +202,7 @@ To only see the built commands (without executing), either:
 * `--max-tables` — max tables per DB to enumerate (default 10).
 * `--max-rows` — max rows per table when dumping (default 50).
 * `--timeout` — per-sqlmap subprocess timeout in seconds (default 300).
+* `--ports` — list of ports to scan simultaneously (e.g., `--ports 5000 8000 3000`).
 
 Run `python agent.py --help` for complete details.
 
